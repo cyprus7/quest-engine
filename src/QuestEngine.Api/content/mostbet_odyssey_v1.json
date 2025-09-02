@@ -191,6 +191,9 @@
     {
       "key": "stage2",
       "title": "Башня Вечно Крутящихся Рун",
+      "conditions": [
+        { "param": "fragment_1", "min": 1 }
+      ],
       "entry_cards": [
         {
           "id": "s2_entrance",
@@ -247,6 +250,9 @@
     {
       "key": "stage3",
       "title": "Карнавал Иллюзий",
+      "conditions": [
+        { "param": "fragment_2", "min": 1 }
+      ],
       "entry_cards": [
         { "id": "s3_start", "art": "cdn://art/carnival.png", "cta": "Войти" }
       ],
@@ -278,6 +284,9 @@
     {
       "key": "stage4",
       "title": "Путь к Центру",
+      "conditions": [
+        { "param": "fragment_3", "min": 1 }
+      ],
       "entry_cards": [
         { "id": "s4_start", "art": "cdn://art/path.png", "cta": "Дальше" }
       ],
@@ -304,6 +313,9 @@
     {
       "key": "stage5",
       "title": "Шторм Удачи",
+      "conditions": [
+        { "param": "fragment_4", "min": 1 }
+      ],
       "entry_cards": [
         { "id": "s5_start", "art": "cdn://art/storm.png", "cta": "Продолжить" }
       ],
@@ -330,6 +342,9 @@
     {
       "key": "stage6",
       "title": "Древо Решений",
+      "conditions": [
+        { "param": "fragment_5", "min": 1 }
+      ],
       "entry_cards": [
         { "id": "s6_start", "art": "cdn://art/tree.png", "cta": "Подойти" }
       ],
@@ -356,6 +371,9 @@
     {
       "key": "stage7",
       "title": "Финальное Испытание",
+      "conditions": [
+        { "param": "fragment_6", "min": 1 }
+      ],
       "entry_cards": [
         { "id": "s7_start", "art": "cdn://art/final.png", "cta": "В портал" }
       ],

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -52,10 +53,24 @@ app.Lifetime.ApplicationStarted.Register(() => {
 
 string GetUserId(HttpContext ctx) => ctx.Request.Headers.TryGetValue("X-User-Id", out var v) ? v.ToString() : "demo-user";
 
-app.MapGet("/v1/quests/{questId}/state", async ([FromRoute] string questId, HttpContext ctx, IQuestRuntime runtime) =>
+static Dictionary<string,int> ParseParams(string? raw)
 {
-    var userId = GetUserId(ctx);
-    var res = await runtime.GetStateAsync(userId, questId);
+    var dict = new Dictionary<string,int>();
+    if (string.IsNullOrWhiteSpace(raw)) return dict;
+    var pairs = raw.Split(',', StringSplitOptions.RemoveEmptyEntries);
+    foreach (var p in pairs)
+    {
+        var parts = p.Split(';', 2);
+        if (parts.Length == 2 && int.TryParse(parts[1], out var val))
+            dict[parts[0]] = val;
+    }
+    return dict;
+}
+
+app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId, [FromQuery(Name="params")] string? raw, IQuestRuntime runtime) =>
+{
+    var prms = ParseParams(raw);
+    var res = await runtime.GetStageAsync(questId, prms);
     return Results.Ok(res);
 });
 
