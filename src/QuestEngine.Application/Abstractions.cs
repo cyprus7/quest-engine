@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using QuestEngine.Domain;
 
 namespace QuestEngine.Application;
@@ -45,6 +46,7 @@ public interface IChestService
 public interface IQuestRuntime
 {
     Task<StateResponse> GetStateAsync(string userId, string questId);
+    Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters);
     Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req);
 }
 

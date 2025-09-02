@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -202,6 +203,28 @@ public sealed class QuestRuntime : IQuestRuntime
             Timer: (object?)new { ends_at = DateTimeOffset.UtcNow.AddMinutes(30), duration_seconds = 1800 },
             ParamsCurrent: Snapshot(s)
         );
+    }
+
+    public Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters)
+    {
+        var content = _content.Get(questId);
+        var stage = content.Stages.First();
+        foreach (var st in content.Stages)
+        {
+            if (st.Conditions == null || st.Conditions.All(c => parameters.GetValueOrDefault(c.Param) >= c.Min))
+                stage = st;
+            else
+                break;
+        }
+
+        var scene = stage.Scenes.First();
+
+        return Task.FromResult(new StateResponse(
+            Scene: new { id = scene.Id, stage_key = stage.Key, title = stage.Title, description = scene.Text, image = stage.EntryCards.FirstOrDefault()?.Art },
+            Choices: scene.Choices.Select(c => (object)new { id = c.Id, text = c.Label }).ToList(),
+            Timer: null,
+            ParamsCurrent: new { inventory = parameters }
+        ));
     }
 
     public async Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req)
