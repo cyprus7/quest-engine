@@ -174,7 +174,7 @@
           "rewards_on_complete": [
             {
               "type": "item",
-              "id": "fragment_1",
+              "id": "golden_wheel_fragment",
               "amount": 1,
               "ui": {
                 "title": "Осколок Начинаний",
@@ -191,6 +191,9 @@
     {
       "key": "stage2",
       "title": "Башня Вечно Крутящихся Рун",
+      "conditions": [
+        { "param": "golden_wheel_fragments", "min": 1 }
+      ],
       "entry_cards": [
         {
           "id": "s2_entrance",
@@ -229,7 +232,7 @@
           "rewards_on_complete": [
             {
               "type": "item",
-              "id": "fragment_2",
+              "id": "golden_wheel_fragment",
               "amount": 1,
               "ui": {
                 "title": "Осколок Мудрости",
@@ -247,6 +250,9 @@
     {
       "key": "stage3",
       "title": "Карнавал Иллюзий",
+      "conditions": [
+        { "param": "golden_wheel_fragments", "min": 2 }
+      ],
       "entry_cards": [
         { "id": "s3_start", "art": "cdn://art/carnival.png", "cta": "Войти" }
       ],
@@ -268,7 +274,7 @@
           "text": "Локи исчезает, напоминая о ценности потерь.",
           "choices": [],
           "rewards_on_complete": [
-            { "type": "item", "id": "fragment_3", "amount": 1,
+            { "type": "item", "id": "golden_wheel_fragment", "amount": 1,
               "ui": { "title": "Осколок Принятия", "desc": "3/7" } }
           ]
         }
@@ -278,6 +284,9 @@
     {
       "key": "stage4",
       "title": "Путь к Центру",
+      "conditions": [
+        { "param": "golden_wheel_fragments", "min": 3 }
+      ],
       "entry_cards": [
         { "id": "s4_start", "art": "cdn://art/path.png", "cta": "Дальше" }
       ],
@@ -294,7 +303,7 @@
           "text": "День завершается.",
           "choices": [],
           "rewards_on_complete": [
-            { "type": "item", "id": "fragment_4", "amount": 1,
+            { "type": "item", "id": "golden_wheel_fragment", "amount": 1,
               "ui": { "title": "Осколок Пути", "desc": "4/7" } }
           ]
         }
@@ -304,6 +313,9 @@
     {
       "key": "stage5",
       "title": "Шторм Удачи",
+      "conditions": [
+        { "param": "golden_wheel_fragments", "min": 4 }
+      ],
       "entry_cards": [
         { "id": "s5_start", "art": "cdn://art/storm.png", "cta": "Продолжить" }
       ],
@@ -320,7 +332,7 @@
           "text": "Ты проходишь через бурю.",
           "choices": [],
           "rewards_on_complete": [
-            { "type": "item", "id": "fragment_5", "amount": 1,
+            { "type": "item", "id": "golden_wheel_fragment", "amount": 1,
               "ui": { "title": "Осколок Стойкости", "desc": "5/7" } }
           ]
         }
@@ -330,6 +342,9 @@
     {
       "key": "stage6",
       "title": "Древо Решений",
+      "conditions": [
+        { "param": "golden_wheel_fragments", "min": 5 }
+      ],
       "entry_cards": [
         { "id": "s6_start", "art": "cdn://art/tree.png", "cta": "Подойти" }
       ],
@@ -346,7 +361,7 @@
           "text": "Друид даёт наставление о твоём пути.",
           "choices": [],
           "rewards_on_complete": [
-            { "type": "item", "id": "fragment_6", "amount": 1,
+            { "type": "item", "id": "golden_wheel_fragment", "amount": 1,
               "ui": { "title": "Осколок Роста", "desc": "6/7" } }
           ]
         }
@@ -356,6 +371,9 @@
     {
       "key": "stage7",
       "title": "Финальное Испытание",
+      "conditions": [
+        { "param": "golden_wheel_fragments", "min": 6 }
+      ],
       "entry_cards": [
         { "id": "s7_start", "art": "cdn://art/final.png", "cta": "В портал" }
       ],
@@ -372,7 +390,7 @@
           "text": "Битва с Бездной завершается твоей победой.",
           "choices": [],
           "rewards_on_complete": [
-            { "type": "item", "id": "fragment_7", "amount": 1,
+            { "type": "item", "id": "golden_wheel_fragment", "amount": 1,
               "ui": { "title": "Последний Осколок", "desc": "7/7" } }
           ]
         }

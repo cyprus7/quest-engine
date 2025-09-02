@@ -60,9 +60,14 @@ public record SceneDef(
 
 public record StageConnect([property: JsonPropertyName("next_stage_key")] string NextStageKey);
 
+public record StageCondition(
+    [property: JsonPropertyName("param")] string Param,
+    [property: JsonPropertyName("min")] int Min);
+
 public record StageDef(
     [property: JsonPropertyName("key")] string Key,
     [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("conditions")] IReadOnlyList<StageCondition>? Conditions,
     [property: JsonPropertyName("entry_cards")] IReadOnlyList<EntryCard> EntryCards,
     [property: JsonPropertyName("scenes")] IReadOnlyList<SceneDef> Scenes,
     [property: JsonPropertyName("connect")] StageConnect Connect);
