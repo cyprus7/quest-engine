@@ -62,17 +62,30 @@ app.MapGet("/v1/quests/{questId}/state", async ([FromRoute] string questId, Http
 app.MapPost("/v1/quests/{questId}/choice", async ([FromRoute] string questId, [FromBody] ChoiceRequest req, HttpContext ctx, IQuestRuntime runtime) =>
 {
     var userId = GetUserId(ctx);
-    var res = await runtime.ApplyChoiceAsync(userId, questId, req);
-    return Results.Ok(res);
+    try
+    {
+        var res = await runtime.ApplyChoiceAsync(userId, questId, req);
+        return Results.Ok(res);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 });
 
-app.MapPost("/v1/chests/{chestInstanceId}/open", async ([FromRoute] string chestInstanceId, HttpContext ctx, IChestService svc) =>
+app.MapPost("/v1/quests/{questId}/chests/{chestInstanceId}/open", async ([FromRoute] string questId, [FromRoute] string chestInstanceId, HttpContext ctx, IChestService svc) =>
 {
     var userId = GetUserId(ctx);
-    var questId = ctx.Request.Query["questId"].ToString();
     var idem = ctx.Request.Headers["Idempotency-Key"].ToString();
-    var res = await svc.OpenAsync(userId, questId, chestInstanceId, string.IsNullOrEmpty(idem) ? null : idem);
-    return Results.Ok(res);
+    try
+    {
+        var res = await svc.OpenAsync(userId, questId, chestInstanceId, string.IsNullOrEmpty(idem) ? null : idem);
+        return Results.Ok(res);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 });
 
 app.Run();
