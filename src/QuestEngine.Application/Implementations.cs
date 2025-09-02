@@ -211,7 +211,14 @@ public sealed class QuestRuntime : IQuestRuntime
         var stage = content.Stages.First();
         foreach (var st in content.Stages)
         {
-            if (st.Conditions == null || st.Conditions.All(c => parameters.GetValueOrDefault(c.Param) >= c.Min))
+
+            var satisfies = st.Conditions == null || st.Conditions.All(c =>
+            {
+                var has = parameters.TryGetValue(c.Param, out var v);
+                return (has ? v : 0) >= c.Min;
+            });
+
+            if (satisfies)
                 stage = st;
             else
                 break;
