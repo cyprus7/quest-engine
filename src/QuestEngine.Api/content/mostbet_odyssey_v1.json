@@ -1,0 +1,240 @@
+{
+  "quest_id": "mostbet_odyssey_v1",
+  "version": "1.0.0",
+  "locale": "ru",
+  "meta": {
+    "title": "Наследники Золотого Колеса"
+  },
+  "reward_pools": {
+    "pool.training.fs": {
+      "title": "Учебный пул спинов",
+      "variants": [
+        {
+          "id": "v1",
+          "weight": 40,
+          "rewards": [
+            {
+              "type": "xp",
+              "amount": 25,
+              "ui": {
+                "title": "Опыт",
+                "desc": "+25 XP"
+              }
+            }
+          ]
+        },
+        {
+          "id": "v2",
+          "weight": 35,
+          "rewards": [
+            {
+              "type": "gems",
+              "amount": 10,
+              "ui": {
+                "title": "Гемы",
+                "desc": "+10"
+              }
+            }
+          ]
+        },
+        {
+          "id": "v3",
+          "weight": 20,
+          "rewards": [
+            {
+              "type": "free_spins",
+              "amount": 20,
+              "denom": 0.1,
+              "game_id": "slot.mirrors",
+              "ui": {
+                "title": "Фриспины",
+                "desc": "20 FS в Mirrors"
+              }
+            }
+          ]
+        },
+        {
+          "id": "v4",
+          "weight": 5,
+          "rewards": [
+            {
+              "type": "wheel_spins",
+              "amount": 1,
+              "ui": {
+                "title": "Колесо фортуны",
+                "desc": "1 прокрутка"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "chests": {
+    "chest.day1.awakening": {
+      "title": "Сундук Пробуждения",
+      "desc": "Подарок за первый шаг",
+      "art": "cdn://ui/chests/awakening.png",
+      "use_pool": "pool.training.fs",
+      "overrides": null
+    },
+    "chest.day2.tower": {
+      "title": "Сундук Башни",
+      "desc": "Награда за сцену",
+      "art": "cdn://ui/chests/tower.png",
+      "use_pool": "pool.training.fs",
+      "overrides": {
+        "variants": [
+          {
+            "id": "v2",
+            "weight": 20
+          },
+          {
+            "id": "v3",
+            "weight": 70
+          },
+          {
+            "id": "v4",
+            "weight": 10
+          }
+        ]
+      }
+    }
+  },
+  "stages": [
+    {
+      "key": "stage1",
+      "title": "Молния в Ясном Небе",
+      "entry_cards": [
+        {
+          "id": "s1_intro",
+          "art": "cdn://art/intro.png",
+          "cta": "Начать"
+        }
+      ],
+      "scenes": [
+        {
+          "id": "s1_intro",
+          "text": "Ты просыпаешься от раската грома...",
+          "choices": [
+            {
+              "id": "pick_adventurer",
+              "label": "Хочу риск!",
+              "effects": [
+                {
+                  "type": "tag",
+                  "op": "inc",
+                  "key": "adrenaline",
+                  "value": 1
+                },
+                {
+                  "type": "spawn_chest",
+                  "chest_id": "chest.day1.awakening"
+                }
+              ],
+              "next": "s1_companion"
+            },
+            {
+              "id": "pick_analyst",
+              "label": "Понять вероятности",
+              "effects": [
+                {
+                  "type": "tag",
+                  "op": "inc",
+                  "key": "analyst",
+                  "value": 1
+                },
+                {
+                  "type": "spawn_chest",
+                  "chest_id": "chest.day1.awakening"
+                }
+              ],
+              "next": "s1_companion"
+            }
+          ]
+        },
+        {
+          "id": "s1_companion",
+          "text": "Выбор духа-хранителя...",
+          "choices": [
+            {
+              "id": "cont",
+              "label": "Продолжить",
+              "effects": [],
+              "next": null
+            }
+          ],
+          "rewards_on_complete": [
+            {
+              "type": "item",
+              "id": "fragment_1",
+              "amount": 1,
+              "ui": {
+                "title": "Осколок Начинаний",
+                "desc": "1/7"
+              }
+            }
+          ]
+        }
+      ],
+      "connect": {
+        "next_stage_key": "stage2"
+      }
+    },
+    {
+      "key": "stage2",
+      "title": "Башня Вечно Крутящихся Рун",
+      "entry_cards": [
+        {
+          "id": "s2_entrance",
+          "art": "cdn://art/tower.png",
+          "cta": "Подняться"
+        }
+      ],
+      "scenes": [
+        {
+          "id": "s2_entrance",
+          "text": "Башня дышит древней магией...",
+          "choices": [
+            {
+              "id": "practice",
+              "label": "Сразу к практике!",
+              "effects": [
+                {
+                  "type": "spawn_chest",
+                  "chest_id": "chest.day2.tower"
+                },
+                {
+                  "type": "stat",
+                  "op": "add",
+                  "key": "xp",
+                  "value": 15
+                }
+              ],
+              "next": "s2_result"
+            }
+          ]
+        },
+        {
+          "id": "s2_result",
+          "text": "Итоги урока...",
+          "choices": [],
+          "rewards_on_complete": [
+            {
+              "type": "item",
+              "id": "fragment_2",
+              "amount": 1,
+              "ui": {
+                "title": "Осколок Мудрости",
+                "desc": "2/7"
+              }
+            }
+          ]
+        }
+      ],
+      "connect": {
+        "next_stage_key": "stage3"
+      }
+    }
+  ]
+}

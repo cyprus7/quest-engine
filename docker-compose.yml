@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: quest-engine-api:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # ПУСТО — используем InMemory БД (по коду).
+      # Чтобы переключить на Postgres — см. блок postgres ниже и раскомментируй строку.
+      # ConnectionStrings__Postgres: "Host=postgres;Username=postgres;Password=postgres;Database=questdb"
+      ASPNETCORE_ENVIRONMENT: "Production"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/swagger/index.html"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      # - postgres   # раскомментируй если включаешь Postgres
+      []
+
+  # --- опционально: Postgres (если хочешь сразу на БД) ---
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: questdb
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres -d questdb"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 20
+
+# volumes:
+#   pgdata:
