@@ -145,6 +145,8 @@ public sealed class ChestService : IChestService
     public async Task<ChestOpenResult> OpenAsync(string userId, string questId, string chestInstanceId, string? idemKey)
     {
         var chest = await _store.GetChestAsync(chestInstanceId) ?? throw new InvalidOperationException("Chest not found");
+        if (chest.QuestId != questId)
+            throw new InvalidOperationException("Chest not in this quest");
         if (chest.Status == "opened" && chest.ResultSnapshot is ChestOpenResult prev) return prev;
 
         // restore pool
