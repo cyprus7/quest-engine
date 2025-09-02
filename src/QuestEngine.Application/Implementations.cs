@@ -211,6 +211,7 @@ public sealed class QuestRuntime : IQuestRuntime
         var stage = content.Stages.First();
         foreach (var st in content.Stages)
         {
+
             var satisfies = st.Conditions == null || st.Conditions.All(c =>
             {
                 var has = parameters.TryGetValue(c.Param, out var v);

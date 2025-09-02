@@ -6,21 +6,65 @@ services:
       context: .
       dockerfile: Dockerfile
     image: quest-engine-api:latest
-    ports:
-      - "8080:8080"
+    # не пробрасываем хост-порт — Traefik будет принимать трафик и балансировать
+    expose:
+      - "8080"
     environment:
       # ПУСТО — используем InMemory БД (по коду).
       # Чтобы переключить на Postgres — см. блок postgres ниже и раскомментируй строку.
       # ConnectionStrings__Postgres: "Host=postgres;Username=postgres;Password=postgres;Database=questdb"
       ASPNETCORE_ENVIRONMENT: "Production"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/swagger/index.html"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
     depends_on:
       # - postgres   # раскомментируй если включаешь Postgres
       []
+    # метки для Traefik (авто-обнаружение); используем Host(`localhost`) для локальной отладки
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.quest-api.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.quest-api.entrypoints=web"
+      - "traefik.http.routers.quest-api.priority=1"
+      - "traefik.http.services.quest-api.loadbalancer.server.port=8080"
+    restart: unless-stopped
+    networks:
+      - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.watch=true"
+      - "--providers.docker.swarmMode=false"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+      - "--log.level=DEBUG"
+    ports:
+      - "8080:80"    # внешний порт для API (traefik -> api replicas)
+      - "8081:8080"  # traefik dashboard (локально)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - web
+    restart: unless-stopped
+    container_name: traefik
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/http/routers >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   # --- опционально: Postgres (если хочешь сразу на БД) ---
   # postgres:
@@ -38,6 +82,10 @@ services:
   #     interval: 5s
   #     timeout: 3s
   #     retries: 20
+
+networks:
+  web:
+    driver: bridge
 
 # volumes:
 #   pgdata:
