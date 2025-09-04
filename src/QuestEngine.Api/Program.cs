@@ -70,8 +70,6 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.MapGet("/", () => Results.Redirect("/swagger"));
-
 // seed demo content if missing
 app.Lifetime.ApplicationStarted.Register(() => {
     var demoPath = Path.Combine(contentFolder, "mostbet_odyssey_v1.json");
