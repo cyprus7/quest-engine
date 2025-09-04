@@ -254,17 +254,17 @@ public sealed class QuestRuntime : IQuestRuntime
         var stage = content.Stages.First(st => st.Key == s.CurrentStageKey);
         // prefer client-provided current scene id if present, else use stored state, else first scene
         SceneDef scene;
-        if (!string.IsNullOrEmpty(req.Current_Scene_Id))
+        if (!string.IsNullOrEmpty(req.CurrentSceneId))
         {
-            scene = stage.Scenes.FirstOrDefault(x => x.Id == req.Current_Scene_Id)
+            scene = stage.Scenes.FirstOrDefault(x => x.Id == req.CurrentSceneId)
                 ?? throw new InvalidOperationException("Unknown scene");
         }
         else
         {
             scene = stage.Scenes.FirstOrDefault(x => x.Id == s.CurrentSceneId) ?? stage.Scenes.First();
         }
-        var choice = scene.Choices.FirstOrDefault(c => c.Id == req.Choice_Id)
-            ?? throw new InvalidOperationException("Unknown choice");
+        var choice = scene.Choices.FirstOrDefault(c => c.Id == req.ChoiceId)
+             ?? throw new InvalidOperationException("Unknown choice");
 
         var before = Snapshot(s);
         var applied = await _effects.ApplyAsync(s, choice.Effects);

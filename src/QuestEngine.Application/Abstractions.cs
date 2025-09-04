@@ -90,7 +90,7 @@ public record ChestRewardDto(string Type, int Amount, string? GameId, double? De
 
 public record StateResponse(object Scene, IReadOnlyList<object> Choices, object? Timer, object ParamsCurrent);
 
-public record ChoiceRequest(string Choice_Id, string? Current_Scene_Id);
+public record ChoiceRequest(string ChoiceId, string? CurrentSceneId);
 
 public record ChoiceResponse(
     string PreviousSceneId,
