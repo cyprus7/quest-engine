@@ -6,18 +6,12 @@ services:
       context: .
       dockerfile: Dockerfile
     image: quest-engine-api:latest
-    # не пробрасываем хост-порт — Traefik будет принимать трафик и балансировать
     expose:
       - "8080"
     environment:
-      # ПУСТО — используем InMemory БД (по коду).
-      # Чтобы переключить на Postgres — см. блок postgres ниже и раскомментируй строку.
-      # ConnectionStrings__Postgres: "Host=postgres;Username=postgres;Password=postgres;Database=questdb"
       ASPNETCORE_ENVIRONMENT: "Production"
-    depends_on:
-      # - postgres   # раскомментируй если включаешь Postgres
-      []
-    # метки для Traefik (авто-обнаружение); используем Host(`localhost`) для локальной отладки
+      QUEST_ENGINE_API_KEY: "${QUEST_ENGINE_API_KEY:?ENV QUEST_ENGINE_API_KEY not found}"
+    depends_on: []
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
@@ -47,8 +41,8 @@ services:
       - "--entrypoints.traefik.address=:8080"
       - "--log.level=DEBUG"
     ports:
-      - "8080:80"    # внешний порт для API (traefik -> api replicas)
-      - "8081:8080"  # traefik dashboard (локально)
+      - "8080:80"
+      - "8081:8080"  # traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -66,26 +60,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # --- опционально: Postgres (если хочешь сразу на БД) ---
-  # postgres:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: questdb
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres -d questdb"]
-  #     interval: 5s
-  #     timeout: 3s
-  #     retries: 20
-
 networks:
   web:
     driver: bridge
-
-# volumes:
-#   pgdata:

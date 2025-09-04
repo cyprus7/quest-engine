@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
 using QuestEngine.Application;
 using QuestEngine.Infrastructure;
@@ -8,7 +9,32 @@ using QuestEngine.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    // optional: basic doc info
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "QuestEngine API", Version = "v1" });
+
+    // API key in header
+    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = "X-Auth-Token",
+        Description = "API key required to access the endpoints. Enter the token value here."
+    });
+
+    // require the key globally
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "ApiKey" }
+            },
+            new List<string>()
+        }
+    });
+});
 
 // Configuration
 var contentFolder = Path.Combine(AppContext.BaseDirectory, "content");
@@ -53,6 +79,15 @@ app.Lifetime.ApplicationStarted.Register(() => {
 
 string GetUserId(HttpContext ctx) => ctx.Request.Headers.TryGetValue("X-User-Id", out var v) ? v.ToString() : "demo-user";
 
+IResult? ValidateApiKey(HttpContext ctx)
+{
+    var provided = ctx.Request.Headers["X-Auth-Token"].ToString();
+    var expected = Environment.GetEnvironmentVariable("QUEST_ENGINE_API_KEY");
+    if (provided != expected)
+        return Results.StatusCode(403);
+    return null;
+}
+
 static Dictionary<string,int> ParseParams(string? raw)
 {
     var dict = new Dictionary<string,int>();
@@ -67,29 +102,75 @@ static Dictionary<string,int> ParseParams(string? raw)
     return dict;
 }
 
-app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId, [FromQuery(Name="params")] string? raw, IQuestRuntime runtime) =>
+app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId, [FromQuery(Name="params")] string? raw, HttpContext ctx, IQuestRuntime runtime) =>
 {
+    var auth = ValidateApiKey(ctx);
+    if (auth is not null) return auth;
+
+    var locale = string.IsNullOrWhiteSpace(ctx.Request.Headers["X-Content-Locale"].ToString())
+        ? null
+        : ctx.Request.Headers["X-Content-Locale"].ToString();
+
     var prms = ParseParams(raw);
-    var res = await runtime.GetStageAsync(questId, prms);
-    return Results.Ok(res);
+    try
+    {
+        var res = await runtime.GetStageAsync(questId, prms, locale);
+        return Results.Ok(res);
+    }
+    catch (FileNotFoundException)
+    {
+        // non-existing quest -> return 4xx indicating invalid parameters
+        return Results.BadRequest(new { error = "Invalid quest id" });
+    }
+    catch (InvalidDataException ex)
+    {
+        // malformed content / bad snapshot etc. -> treat as client-provided invalid params
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (Exception)
+    {
+        // unexpected errors still map to 500
+        return Results.StatusCode(500);
+    }
 });
 
 app.MapPost("/v1/quests/{questId}/choice", async ([FromRoute] string questId, [FromBody] ChoiceRequest req, HttpContext ctx, IQuestRuntime runtime) =>
 {
+    var auth = ValidateApiKey(ctx);
+    if (auth is not null) return auth;
+
     var userId = GetUserId(ctx);
+    var locale = string.IsNullOrWhiteSpace(ctx.Request.Headers["X-Content-Locale"].ToString())
+        ? null
+        : ctx.Request.Headers["X-Content-Locale"].ToString();
     try
     {
-        var res = await runtime.ApplyChoiceAsync(userId, questId, req);
+        var res = await runtime.ApplyChoiceAsync(userId, questId, req, locale);
         return Results.Ok(res);
+    }
+    catch (FileNotFoundException)
+    {
+        return Results.BadRequest(new { error = "Invalid quest id" });
+    }
+    catch (InvalidDataException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
     }
     catch (InvalidOperationException ex)
     {
         return Results.BadRequest(new { error = ex.Message });
     }
+    catch (Exception)
+    {
+        return Results.StatusCode(500);
+    }
 });
 
 app.MapPost("/v1/quests/{questId}/chests/{chestInstanceId}/open", async ([FromRoute] string questId, [FromRoute] string chestInstanceId, HttpContext ctx, IChestService svc) =>
 {
+    var auth = ValidateApiKey(ctx);
+    if (auth is not null) return auth;
+
     var userId = GetUserId(ctx);
     var idem = ctx.Request.Headers["Idempotency-Key"].ToString();
     try

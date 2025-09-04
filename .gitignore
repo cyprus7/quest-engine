@@ -1,1 +1,5 @@
+.env
 *.log
+src/QuestEngine.Api/bin/
+# ignore entire content directory (all files and subfolders)
+src/QuestEngine.Api/content/

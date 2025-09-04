@@ -5,7 +5,7 @@ namespace QuestEngine.Application;
 
 public interface IContentProvider
 {
-    QuestContent Get(string questId);
+    QuestContent Get(string questId, string? locale = null);
 }
 
 public interface IProgressStore
@@ -45,9 +45,9 @@ public interface IChestService
 
 public interface IQuestRuntime
 {
-    Task<StateResponse> GetStateAsync(string userId, string questId);
-    Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters);
-    Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req);
+    Task<StateResponse> GetStateAsync(string userId, string questId, string? locale = null);
+    Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters, string? locale = null);
+    Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req, string? locale = null);
 }
 
 // DTOs & State
@@ -90,7 +90,7 @@ public record ChestRewardDto(string Type, int Amount, string? GameId, double? De
 
 public record StateResponse(object Scene, IReadOnlyList<object> Choices, object? Timer, object ParamsCurrent);
 
-public record ChoiceRequest(string Choice_Id, string? Dedupe_Key);
+public record ChoiceRequest(string Choice_Id, string? Current_Scene_Id);
 
 public record ChoiceResponse(
     string PreviousSceneId,

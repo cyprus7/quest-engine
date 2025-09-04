@@ -15,15 +15,26 @@ public sealed class FileContentProvider : IContentProvider
 
     public FileContentProvider(string folder) => _folder = folder;
 
-    public QuestContent Get(string questId)
+    public QuestContent Get(string questId, string? locale = null)
     {
-        if (_cache.TryGetValue(questId, out var cached)) return cached;
-        var path = Path.Combine(_folder, $"{questId}.json");
-        if (!File.Exists(path)) throw new FileNotFoundException($"Content {questId} not found", path);
-    var json = File.ReadAllText(path);
-    var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
+        var cacheKey = $"{questId}|{locale}";
+        if (_cache.TryGetValue(cacheKey, out var cached)) return cached;
+
+        var candidates = new List<string>();
+        if (!string.IsNullOrEmpty(locale))
+        {
+            candidates.Add(Path.Combine(_folder, locale, $"{questId}.json"));         // content/<locale>/<questId>.json
+            candidates.Add(Path.Combine(_folder, $"{questId}_{locale}.json"));       // content/quest_locale.json
+        }
+        candidates.Add(Path.Combine(_folder, $"{questId}.json"));                   // content/questId.json
+
+        var path = candidates.FirstOrDefault(File.Exists);
+        if (path is null) throw new FileNotFoundException($"Content {questId} not found (locale={locale})");
+
+        var json = File.ReadAllText(path);
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
         var doc = JsonSerializer.Deserialize<QuestContent>(json, opts) ?? throw new InvalidDataException("Invalid JSON");
-        _cache[questId] = doc;
+        _cache[cacheKey] = doc;
         return doc;
     }
 }
@@ -188,9 +199,9 @@ public sealed class QuestRuntime : IQuestRuntime
     public QuestRuntime(IContentProvider content, IProgressStore store, IEffectResolver effects)
         => (_content, _store, _effects) = (content, store, effects);
 
-    public async Task<StateResponse> GetStateAsync(string userId, string questId)
+    public async Task<StateResponse> GetStateAsync(string userId, string questId, string? locale = null)
     {
-        var content = _content.Get(questId);
+        var content = _content.Get(questId, locale);
         var s = await _store.GetOrStartAsync(userId, questId);
         s.Content = content;
 
@@ -205,9 +216,9 @@ public sealed class QuestRuntime : IQuestRuntime
         );
     }
 
-    public Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters)
+    public Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters, string? locale = null)
     {
-        var content = _content.Get(questId);
+        var content = _content.Get(questId, locale);
         var stage = content.Stages.First();
         foreach (var st in content.Stages)
         {
@@ -234,14 +245,24 @@ public sealed class QuestRuntime : IQuestRuntime
         ));
     }
 
-    public async Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req)
+    public async Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req, string? locale = null)
     {
-        var content = _content.Get(questId);
+        var content = _content.Get(questId, locale);
         var s = await _store.GetOrStartAsync(userId, questId);
         s.Content = content;
 
         var stage = content.Stages.First(st => st.Key == s.CurrentStageKey);
-        var scene = stage.Scenes.FirstOrDefault(x => x.Id == s.CurrentSceneId) ?? stage.Scenes.First();
+        // prefer client-provided current scene id if present, else use stored state, else first scene
+        SceneDef scene;
+        if (!string.IsNullOrEmpty(req.Current_Scene_Id))
+        {
+            scene = stage.Scenes.FirstOrDefault(x => x.Id == req.Current_Scene_Id)
+                ?? throw new InvalidOperationException("Unknown scene");
+        }
+        else
+        {
+            scene = stage.Scenes.FirstOrDefault(x => x.Id == s.CurrentSceneId) ?? stage.Scenes.First();
+        }
         var choice = scene.Choices.FirstOrDefault(c => c.Id == req.Choice_Id)
             ?? throw new InvalidOperationException("Unknown choice");
 
@@ -278,7 +299,7 @@ public sealed class QuestRuntime : IQuestRuntime
             inventory = Diff(before.inventory, after.inventory)
         };
 
-        var next = await GetStateAsync(userId, questId);
+        var next = await GetStateAsync(userId, questId, locale);
 
         return new ChoiceResponse(
             PreviousSceneId: scene.Id,
