@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.EntityFrameworkCore;
 using QuestEngine.Application;
 using QuestEngine.Infrastructure;
@@ -34,6 +36,9 @@ builder.Services.AddSwaggerGen(c =>
             new List<string>()
         }
     });
+
+    // add header param for content locale (shows in Swagger UI)
+    c.OperationFilter<AddLocaleHeaderParameter>();
 });
 
 // Configuration
@@ -107,8 +112,9 @@ app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId, [Fr
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
+    // default to "ru" if no locale header provided
     var locale = string.IsNullOrWhiteSpace(ctx.Request.Headers["X-Content-Locale"].ToString())
-        ? null
+        ? "ru"
         : ctx.Request.Headers["X-Content-Locale"].ToString();
 
     var prms = ParseParams(raw);
@@ -140,8 +146,9 @@ app.MapPost("/v1/quests/{questId}/choice", async ([FromRoute] string questId, [F
     if (auth is not null) return auth;
 
     var userId = GetUserId(ctx);
+    // default to "ru" if no locale header provided
     var locale = string.IsNullOrWhiteSpace(ctx.Request.Headers["X-Content-Locale"].ToString())
-        ? null
+        ? "ru"
         : ctx.Request.Headers["X-Content-Locale"].ToString();
     try
     {
@@ -185,3 +192,23 @@ app.MapPost("/v1/quests/{questId}/chests/{chestInstanceId}/open", async ([FromRo
 });
 
 app.Run();
+
+// add operation filter implementation for swagger header parameter
+public class AddLocaleHeaderParameter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        operation.Parameters ??= new List<OpenApiParameter>();
+        if (!operation.Parameters.Any(p => p.Name == "X-Content-Locale"))
+        {
+            operation.Parameters.Add(new OpenApiParameter
+            {
+                Name = "X-Content-Locale",
+                In = ParameterLocation.Header,
+                Required = false,
+                Description = "Content locale (e.g. 'ru' or 'en'). If omitted, defaults to 'ru'.",
+                Schema = new OpenApiSchema { Type = "string", Default = new OpenApiString("ru") }
+            });
+        }
+    }
+}
