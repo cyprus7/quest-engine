@@ -245,6 +245,21 @@ public sealed class QuestRuntime : IQuestRuntime
         ));
     }
 
+    public Task<StateResponse> GetSceneAsync(string questId, string sceneId, string? locale = null)
+    {
+        var content = _content.Get(questId, locale);
+        var stage = content.Stages.FirstOrDefault(st => st.Scenes.Any(sc => sc.Id == sceneId))
+            ?? throw new InvalidOperationException("Unknown scene");
+        var scene = stage.Scenes.First(sc => sc.Id == sceneId);
+
+        return Task.FromResult(new StateResponse(
+            Scene: new { id = scene.Id, stage_key = stage.Key, title = stage.Title, description = scene.Text, image = stage.EntryCards.FirstOrDefault()?.Art },
+            Choices: scene.Choices.Select(c => (object)new { id = c.Id, text = c.Label }).ToList(),
+            Timer: null,
+            ParamsCurrent: new { }
+        ));
+    }
+
     public async Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req, string? locale = null)
     {
         var content = _content.Get(questId, locale);

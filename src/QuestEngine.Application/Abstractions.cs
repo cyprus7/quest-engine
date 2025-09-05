@@ -47,6 +47,7 @@ public interface IQuestRuntime
 {
     Task<StateResponse> GetStateAsync(string userId, string questId, string? locale = null);
     Task<StateResponse> GetStageAsync(string questId, IDictionary<string,int> parameters, string? locale = null);
+    Task<StateResponse> GetSceneAsync(string questId, string sceneId, string? locale = null);
     Task<ChoiceResponse> ApplyChoiceAsync(string userId, string questId, ChoiceRequest req, string? locale = null);
 }
 

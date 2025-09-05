@@ -11,6 +11,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
       QUEST_ENGINE_API_KEY: "${QUEST_ENGINE_API_KEY:?ENV QUEST_ENGINE_API_KEY not found}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
     depends_on: []
     labels:
       - "traefik.enable=true"
