@@ -7,6 +7,8 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.EntityFrameworkCore;
 using QuestEngine.Application;
 using QuestEngine.Infrastructure;
+using QuestEngine.Api.Dtos;
+using QuestEngine.Api.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +41,9 @@ builder.Services.AddSwaggerGen(c =>
 
     // add header param for content locale (shows in Swagger UI)
     c.OperationFilter<AddLocaleHeaderParameter>();
+
+    // add example for "params" query parameter
+    c.ParameterFilter<AddParamsExample>();
 });
 
 // Configuration
@@ -157,36 +162,35 @@ IResult? ValidateApiKey(HttpContext ctx)
 
 static Dictionary<string,int> ParseParams(string? raw)
 {
+    // New format: "param1:2;param2:3;..." (also accept commas as separators for backward compat)
     var dict = new Dictionary<string,int>();
     if (string.IsNullOrWhiteSpace(raw)) return dict;
-    var pairs = raw.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+    var pairs = raw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
     foreach (var p in pairs)
     {
-        var parts = p.Split(';', 2);
-        if (parts.Length == 2 && int.TryParse(parts[1], out var val))
-            dict[parts[0]] = val;
+        var parts = p.Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 2 && int.TryParse(parts[1].Trim(), out var val))
+            dict[parts[0].Trim()] = val;
     }
     return dict;
 }
 
-app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId,
-                                                 [FromQuery(Name="params")] string? raw,
-                                                 [FromQuery(Name="sceneId")] string? sceneId,
-                                                 [FromQuery(Name="all")] bool? all,
-+                                                [FromQuery(Name="locale")] string? qLocale,
-                                                 HttpContext ctx,
-                                                 IQuestRuntime runtime,
-                                                 IContentProvider contentProvider) =>
+app.MapGet("/v1/quests/{questId}/stages", async (
+    [FromRoute] string questId,
+    [FromQuery(Name="params")] string? raw,
+    [FromQuery(Name="sceneId")] string? sceneId,
+    [FromQuery(Name="all")] bool? all,
+    [FromQuery(Name="locale")] string? qLocale,
+    HttpContext ctx,
+    IQuestRuntime runtime,
+    IContentProvider contentProvider) =>
 {
--    LogRequest(ctx, $"/v1/quests/{questId}/stages", new { sceneId, raw, all });
-+    LogRequest(ctx, $"/v1/quests/{questId}/stages", new { sceneId, raw, all }, qLocale);
+    LogRequest(ctx, $"/v1/quests/{questId}/stages", new { sceneId, raw, all }, qLocale);
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
--    var locale = string.IsNullOrWhiteSpace(ctx.Request.Headers["X-Content-Locale"].ToString())
--        ? "ru"
--        : ctx.Request.Headers["X-Content-Locale"].ToString();
-+    var locale = ResolveLocale(ctx, qLocale);
+    var locale = ResolveLocale(ctx, qLocale);
 
     var prms = ParseParams(raw);
     try
@@ -195,7 +199,6 @@ app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId,
         if (all is true)
         {
             var content = contentProvider.Get(questId, locale);
-            // determine last index of stages that satisfy parameters (same logic as runtime.GetStageAsync)
             int lastAvailable = -1;
             for (int i = 0; i < content.Stages.Count; i++)
             {
@@ -254,19 +257,19 @@ app.MapGet("/v1/quests/{questId}/stages", async ([FromRoute] string questId,
     }
 });
 
-app.MapPost("/v1/quests/{questId}/choice", async ([FromRoute] string questId, [FromBody] ChoiceRequest req, [FromQuery(Name="locale")] string? qLocale, HttpContext ctx, IQuestRuntime runtime) =>
+app.MapPost("/v1/quests/{questId}/choice", async (
+    [FromRoute] string questId,
+    [FromBody] ChoiceRequest req,
+    [FromQuery(Name="locale")] string? qLocale,
+    HttpContext ctx,
+    IQuestRuntime runtime) =>
 {
--    LogRequest(ctx, $"/v1/quests/{questId}/choice", req);
-+    LogRequest(ctx, $"/v1/quests/{questId}/choice", req, qLocale);
+    LogRequest(ctx, $"/v1/quests/{questId}/choice", req, qLocale);
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
     var userId = GetUserId(ctx);
-    // default to "ru" if no locale header provided
--    var locale = string.IsNullOrWhiteSpace(ctx.Request.Headers["X-Content-Locale"].ToString())
--        ? "ru"
--        : ctx.Request.Headers["X-Content-Locale"].ToString();
-+    var locale = ResolveLocale(ctx, qLocale);
+    var locale = ResolveLocale(ctx, qLocale);
     try
     {
         var res = await runtime.ApplyChoiceAsync(userId, questId, req, locale);
@@ -290,24 +293,26 @@ app.MapPost("/v1/quests/{questId}/choice", async ([FromRoute] string questId, [F
     }
 });
 
-app.MapPost("/v1/quests/{questId}/chests/{chestInstanceId}/open", async ([FromRoute] string questId, [FromRoute] string chestInstanceId, [FromQuery(Name="locale")] string? qLocale, HttpContext ctx, IChestService svc) =>
+app.MapPost("/v1/quests/{questId}/chests/open", async (
+    [FromRoute] string questId,
+    [FromBody] ChestOpenRequest req,
+    [FromQuery(Name="locale")] string? qLocale,
+    HttpContext ctx,
+    IChestService svc) =>
 {
--    var idemHeader = ctx.Request.Headers["Idempotency-Key"].ToString();
--    LogRequest(ctx, $"/v1/quests/{questId}/chests/{chestInstanceId}/open", new { idem = idemHeader });
-+    var idemHeader = ctx.Request.Headers["Idempotency-Key"].ToString();
-+    LogRequest(ctx, $"/v1/quests/{questId}/chests/{chestInstanceId}/open", new { idem = idemHeader }, qLocale);
+    var idemHeader = ctx.Request.Headers["Idempotency-Key"].ToString();
+    LogRequest(ctx, $"/v1/quests/{questId}/chests/open", new { idem = idemHeader, chestId = req.ChestId }, qLocale);
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
     var userId = GetUserId(ctx);
--    var idem = ctx.Request.Headers["Idempotency-Key"].ToString();
-+    var idem = ctx.Request.Headers["Idempotency-Key"].ToString();
-+    var locale = ResolveLocale(ctx, qLocale);
+    var idem = string.IsNullOrEmpty(idemHeader) ? null : idemHeader;
+    var locale = ResolveLocale(ctx, qLocale); // pass resolved locale
+
     try
     {
--        var res = await svc.OpenAsync(userId, questId, chestInstanceId, string.IsNullOrEmpty(idem) ? null : idem);
-+        var res = await svc.OpenAsync(userId, questId, chestInstanceId, string.IsNullOrEmpty(idem) ? null : idem);
-         return Results.Ok(res);
+        var res = await svc.OpenAsync(userId, questId, req.ChestId, idem, locale);
+        return Results.Ok(res);
     }
     catch (InvalidOperationException ex)
     {
@@ -316,23 +321,3 @@ app.MapPost("/v1/quests/{questId}/chests/{chestInstanceId}/open", async ([FromRo
 });
 
 app.Run();
-
-// add operation filter implementation for swagger header parameter
-public class AddLocaleHeaderParameter : IOperationFilter
-{
-    public void Apply(OpenApiOperation operation, OperationFilterContext context)
-    {
-        operation.Parameters ??= new List<OpenApiParameter>();
-        if (!operation.Parameters.Any(p => p.Name == "X-Content-Locale"))
-        {
-            operation.Parameters.Add(new OpenApiParameter
-            {
-                Name = "X-Content-Locale",
-                In = ParameterLocation.Header,
-                Required = false,
-                Description = "Content locale (e.g. 'ru' or 'en'). If omitted, defaults to 'ru'.",
-                Schema = new OpenApiSchema { Type = "string", Default = new OpenApiString("ru") }
-            });
-        }
-    }
-}

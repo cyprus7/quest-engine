@@ -28,14 +28,42 @@ public sealed class FileContentProvider : IContentProvider
         }
         candidates.Add(Path.Combine(_folder, $"{questId}.json"));                   // content/questId.json
 
-        var path = candidates.FirstOrDefault(File.Exists);
+        // pick first candidate that exists and is non-empty
+        string? path = null;
+        foreach (var c in candidates)
+        {
+            if (File.Exists(c))
+            {
+                try
+                {
+                    var fi = new FileInfo(c);
+                    if (fi.Length > 0) { path = c; break; }
+                    // if file exists but empty, skip it (treat as missing)
+                }
+                catch
+                {
+                    // if something goes wrong checking file info, skip this candidate
+                }
+            }
+        }
+
         if (path is null) throw new FileNotFoundException($"Content {questId} not found (locale={locale})");
 
         var json = File.ReadAllText(path);
+        if (string.IsNullOrWhiteSpace(json))
+            throw new InvalidDataException($"Content file is empty: {path}");
+
         var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
-        var doc = JsonSerializer.Deserialize<QuestContent>(json, opts) ?? throw new InvalidDataException("Invalid JSON");
-        _cache[cacheKey] = doc;
-        return doc;
+        try
+        {
+            var doc = JsonSerializer.Deserialize<QuestContent>(json, opts) ?? throw new InvalidDataException($"Invalid JSON in content file: {path}");
+            _cache[cacheKey] = doc;
+            return doc;
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException($"Failed to parse JSON content file '{path}': {ex.Message}");
+        }
     }
 }
 
@@ -147,28 +175,38 @@ public sealed class EffectResolver : IEffectResolver
 
 public sealed class ChestService : IChestService
 {
-    private readonly IProgressStore _store;
+    private readonly IContentProvider _content;
     private readonly IRngService _rng;
     private readonly IRewardsExporter _exporter;
 
-    public ChestService(IProgressStore store, IRngService rng, IRewardsExporter exporter)
-        => (_store, _rng, _exporter) = (store, rng, exporter);
+    // constructor unchanged
+    public ChestService(IContentProvider content, IRngService rng, IRewardsExporter exporter)
+        => (_content, _rng, _exporter) = (content, rng, exporter);
 
-    public async Task<ChestOpenResult> OpenAsync(string userId, string questId, string chestInstanceId, string? idemKey)
+    // changed signature: added locale parameter and use it to load content
+    public async Task<ChestOpenResult> OpenAsync(string userId, string questId, string chestId, string? idemKey, string? locale = null)
     {
-        var chest = await _store.GetChestAsync(chestInstanceId) ?? throw new InvalidOperationException("Chest not found");
-        if (chest.QuestId != questId)
+        QuestContent content;
+        try
+        {
+            // use provided locale (may be null to load base content)
+            content = _content.Get(questId, locale);
+        }
+        catch (FileNotFoundException)
+        {
+            // requested quest doesn't exist -> treat as chest not in this quest
             throw new InvalidOperationException("Chest not in this quest");
-        if (chest.Status == "opened" && chest.ResultSnapshot is ChestOpenResult prev) return prev;
+        }
 
-        // restore pool
-        var poolJson = JsonSerializer.Serialize(chest.PoolSnapshot);
-        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var snap = JsonSerializer.Deserialize<PoolSnapshot>(poolJson, opts) ?? throw new InvalidDataException("Bad snapshot");
-        var pool = snap.pool;
+        if (!content.Chests.TryGetValue(chestId, out var chest))
+            throw new InvalidOperationException("Chest not found");
 
+        var basePool = content.RewardPools[chest.UsePool];
+        var pool = MergePool(basePool, chest.Overrides);
+
+        // deterministic seed: user|quest|chest
         Span<byte> seed = stackalloc byte[128];
-        var seedStr = $"{userId}|{questId}|{chestInstanceId}";
+        var seedStr = $"{userId}|{questId}|{chestId}";
         Encoding.UTF8.GetBytes(seedStr, seed);
         var u = _rng.Next01(seed);
         var weights = pool.Variants.Select(v => v.Weight).ToList();
@@ -180,14 +218,27 @@ public sealed class ChestService : IChestService
 
         await _exporter.ExportAsync(userId, applied);
 
-        var result = new ChestOpenResult(chestInstanceId, comboId, variant.Id,
+        var result = new ChestOpenResult(chestId, comboId, variant.Id,
             applied.Select(a => new ChestRewardDto(a.Type, a.Amount, a.GameId, a.Denom)).ToList());
 
-        await _store.MarkChestOpenedAsync(chestInstanceId, result);
+        // NOTE: no DB instance marking here (engine works with logical chest ids)
         return result;
     }
 
-    private record PoolSnapshot(string chest_id, RewardPool pool);
+    // duplicate MergePool logic (same as EffectResolver.MergePool)
+    private static RewardPool MergePool(RewardPool basePool, ChestOverrides? overrides)
+    {
+        if (overrides is null) return basePool;
+        var map = basePool.Variants.ToDictionary(v => v.Id, v => v);
+        foreach (var ov in overrides.Variants)
+        {
+            if (map.TryGetValue(ov.Id, out var v))
+            {
+                map[ov.Id] = v with { Weight = ov.Weight };
+            }
+        }
+        return basePool with { Variants = map.Values.ToList() };
+    }
 }
 
 public sealed class QuestRuntime : IQuestRuntime

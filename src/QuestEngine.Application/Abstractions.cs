@@ -40,7 +40,8 @@ public interface IEffectResolver
 
 public interface IChestService
 {
-    Task<ChestOpenResult> OpenAsync(string userId, string questId, string chestInstanceId, string? idemKey);
+    // changed: add optional locale parameter
+    Task<ChestOpenResult> OpenAsync(string userId, string questId, string chestId, string? idemKey, string? locale = null);
 }
 
 public interface IQuestRuntime
