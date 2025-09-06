@@ -181,16 +181,15 @@ app.MapGet("/v1/quests/{questId}/stages", async (
     [FromQuery(Name="params")] string? raw,
     [FromQuery(Name="sceneId")] string? sceneId,
     [FromQuery(Name="all")] bool? all,
-    [FromQuery(Name="locale")] string? qLocale,
     HttpContext ctx,
     IQuestRuntime runtime,
     IContentProvider contentProvider) =>
 {
-    LogRequest(ctx, $"/v1/quests/{questId}/stages", new { sceneId, raw, all }, qLocale);
+    LogRequest(ctx, $"/v1/quests/{questId}/stages", new { sceneId, raw, all });
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
-    var locale = ResolveLocale(ctx, qLocale);
+    var locale = ResolveLocale(ctx);
 
     var prms = ParseParams(raw);
     try
@@ -260,16 +259,15 @@ app.MapGet("/v1/quests/{questId}/stages", async (
 app.MapPost("/v1/quests/{questId}/choice", async (
     [FromRoute] string questId,
     [FromBody] ChoiceRequest req,
-    [FromQuery(Name="locale")] string? qLocale,
     HttpContext ctx,
     IQuestRuntime runtime) =>
 {
-    LogRequest(ctx, $"/v1/quests/{questId}/choice", req, qLocale);
+    LogRequest(ctx, $"/v1/quests/{questId}/choice", req);
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
     var userId = GetUserId(ctx);
-    var locale = ResolveLocale(ctx, qLocale);
+    var locale = ResolveLocale(ctx);
     try
     {
         var res = await runtime.ApplyChoiceAsync(userId, questId, req, locale);
@@ -296,18 +294,17 @@ app.MapPost("/v1/quests/{questId}/choice", async (
 app.MapPost("/v1/quests/{questId}/chests/open", async (
     [FromRoute] string questId,
     [FromBody] ChestOpenRequest req,
-    [FromQuery(Name="locale")] string? qLocale,
     HttpContext ctx,
     IChestService svc) =>
 {
     var idemHeader = ctx.Request.Headers["Idempotency-Key"].ToString();
-    LogRequest(ctx, $"/v1/quests/{questId}/chests/open", new { idem = idemHeader, chestId = req.ChestId }, qLocale);
+    LogRequest(ctx, $"/v1/quests/{questId}/chests/open", new { idem = idemHeader, chestId = req.ChestId });
     var auth = ValidateApiKey(ctx);
     if (auth is not null) return auth;
 
     var userId = GetUserId(ctx);
     var idem = string.IsNullOrEmpty(idemHeader) ? null : idemHeader;
-    var locale = ResolveLocale(ctx, qLocale); // pass resolved locale
+    var locale = ResolveLocale(ctx);
 
     try
     {
